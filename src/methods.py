@@ -98,25 +98,7 @@ def filterByColor(inputImg):
 
 def Warper(img, src, dst):
     # Compute and apply perpective transform
-    print(np.float32(src))
-    # print(np.float32(dst))
-    # return
     imgSize = (img.shape[1], img.shape[0])
     M = cv2.getPerspectiveTransform(np.float32(src), np.float32(dst))
     warped = cv2.warpPerspective(img, M, imgSize, flags=cv2.INTER_NEAREST)  # keep same size as input image
-    return warped
-
-def perspective_warp(img,
-                     dst_size=(1280,720),
-                     src=np.float32([(0.43,0.65),(0.58,0.65),(0.1,1),(1,1)]),
-                     dst=np.float32([(0,0), (1, 0), (0,1), (1,1)])):
-    img_size = np.float32([(img.shape[1],img.shape[0])])
-    src = src* img_size
-    dst = dst * np.float32(dst_size)
-
-    print(src)
-    print(dst)
-    return
-    M = cv2.getPerspectiveTransform(src, dst)
-    warped = cv2.warpPerspective(img, M, dst_size)
     return warped
