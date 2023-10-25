@@ -84,7 +84,7 @@ def filterByColor(inputImg):
     whiteMask = cv2.inRange(inputImgHSV, lower_white, upper_white)
 
     #filter by yellow color
-    lower_yellow = np.array([10, 50, 150])
+    lower_yellow = np.array([10, 50, 100])
     upper_yellow = np.array([50, 255, 255])
     yellowMask = cv2.inRange(inputImg, lower_yellow, upper_yellow)
 
