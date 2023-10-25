@@ -18,7 +18,7 @@ import methods
 
 cameraCalibrationPath = '../camera_cal/calibration*.jpg'
 CalibrationTestOutputPath = '../calibrationTest/'
-testVideoPath = '../test_videos/project_video03.mp4'
+testVideoPath = '../test_videos/project_video02.mp4'
 
 
 chessRows = 6
@@ -60,13 +60,11 @@ def detectLanes(inputImg):
                     [undistortedImg.shape[1] - 1, undistortedImg.shape[0] - 1],
                     [undistortedImg.shape[1] - 1, 0] ])
 
-    for val in roiVertices:
-        cv2.circle(undistortedImg,(val[0],val[1]),5,(0,255,0),-1)
+    # for val in roiVertices:
+    #     cv2.circle(undistortedImg,(val[0],val[1]),5,(0,255,0),-1)
 
-    for val in dstVertices:
-        cv2.circle(undistortedImg,(val[0],val[1]),5,(255,0,0),-1)
-
-    # return undistortedImg
+    # for val in dstVertices:
+    #     cv2.circle(undistortedImg,(val[0],val[1]),5,(255,0,0),-1)
 
     # Perspective warping
     warped = methods.Warper(undistortedImg, roiVertices, dstVertices)
@@ -74,7 +72,17 @@ def detectLanes(inputImg):
     # Continue here
     colorFilteredImg, colorMask = methods.filterByColor(warped)
 
-    return colorMask
+    out_img, curves, lanes, ploty = methods.sliding_window(colorMask)
+
+    img_ = methods.draw_lanes(warped, curves[0], curves[1])
+
+    inv_perspective = methods.Warper(img_, dstVertices, roiVertices)
+    inv_perspective = cv2.addWeighted(inputImg, 1, inv_perspective, 0.7, 0)
+    # curverad = methods.get_curve(img, curves[0],curves[1])
+
+
+
+    return inv_perspective
 
 if __name__ == '__main__':
     #1 Camera calibration
