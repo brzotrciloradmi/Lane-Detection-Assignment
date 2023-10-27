@@ -18,11 +18,27 @@ import methods
 
 cameraCalibrationPath = '../camera_cal/calibration*.jpg'
 CalibrationTestOutputPath = '../calibrationTest/'
-testVideoPath = '../test_videos/project_video02.mp4'
-
+# testVideoPath = '../test_videos/project_video02.mp4'
+testVideoPath = '../test_videos/challenge01.mp4'
 
 chessRows = 6
 chessCols = 9
+
+#predefined ROIs
+def findROI(imgShape):
+    if testVideoPath == '../test_videos/project_video03.mp4':
+        print('AAA')
+        roiVertices = np.int32([ [2*imgShape[1]/5 + 10, 4*imgShape[0]/6 -1],
+                [1*imgShape[1]/5 + 70 - 1, 6*imgShape[0]/7 - 1],
+                [4*imgShape[1]/5 + 70 - 1, 6*imgShape[0]/7 - 1],
+                [3*imgShape[1]/5 + 40 - 1, 4*imgShape[0]/6 - 1] ])
+    else:
+        roiVertices = np.int32([ [2*imgShape[1]/5 + 43 - 1, 4*imgShape[0]/6 -1],
+                [1*imgShape[1]/5 + 50 - 1, 6*imgShape[0]/7 - 1],
+                [4*imgShape[1]/5 + 50 - 1, 6*imgShape[0]/7 - 1],
+                [3*imgShape[1]/5 + 43 - 1, 4*imgShape[0]/6 - 1] ])
+    return roiVertices
+
 
 def videoPlayer(VideoPath):
     video = cv2.VideoCapture(VideoPath)
@@ -33,7 +49,7 @@ def videoPlayer(VideoPath):
             cv2.imshow('Frame', frame)
 
         # Press Q on keyboard to exit
-            if cv2.waitKey(25) & 0xFF == ord('q'):
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         else:
             break
@@ -50,10 +66,11 @@ def detectLanes(inputImg):
     # ROI masking
     print(undistortedImg.shape) #shape returns (width, height, channelNum)
     # Max shape needs to be decremented by 1 because of 0 start counting... fml
-    roiVertices = np.int32([ [2*undistortedImg.shape[1]/5 + 50 - 1, 4*undistortedImg.shape[0]/6 -1],
-                    [1*undistortedImg.shape[1]/5 + 50 - 1, 6*undistortedImg.shape[0]/7 - 1],
-                    [4*undistortedImg.shape[1]/5 + 50 - 1, 6*undistortedImg.shape[0]/7 - 1],
-                    [3*undistortedImg.shape[1]/5 + 50 - 1, 4*undistortedImg.shape[0]/6 - 1] ])
+    roiVertices = findROI(undistortedImg.shape)
+    # roiVertices = np.int32([ [2*undistortedImg.shape[1]/5 + 50 - 1, 4*undistortedImg.shape[0]/6 -1],
+    #                 [1*undistortedImg.shape[1]/5 + 50 - 1, 6*undistortedImg.shape[0]/7 - 1],
+    #                 [4*undistortedImg.shape[1]/5 + 50 - 1, 6*undistortedImg.shape[0]/7 - 1],
+    #                 [3*undistortedImg.shape[1]/5 + 50 - 1, 4*undistortedImg.shape[0]/6 - 1] ])
 
     dstVertices = np.int32([ [0, 0],
                     [0, undistortedImg.shape[0] - 1],
@@ -66,17 +83,18 @@ def detectLanes(inputImg):
     # Continue here
     colorFilteredImg, colorMask = methods.filterByColor(warped)
 
-    lines = cv2.HoughLinesP(colorMask, 1, np.pi / 180, threshold=100, minLineLength=100, maxLineGap=300)
-    for points in lines:
-        x1, y1, x2, y2 = np.array(points[0])
-        cv2.line(warped, (x1, y1), (x2, y2), (255, 0, 0), 2)
+    lines = cv2.HoughLinesP(colorMask, 1, np.pi / 180, threshold=100, minLineLength=100, maxLineGap=1000)
+
+    if(type(lines) != type(None)):
+        for points in lines:
+            x1, y1, x2, y2 = np.array(points[0])
+            cv2.line(warped, (x1, y1), (x2, y2), (0, 255, 0), 10)
 
     unwarped = methods.Warper(warped, dstVertices, roiVertices)
     undistortedImg = cv2.fillPoly(undistortedImg, [roiVertices], (0, 0, 0))
     outputImg = undistortedImg + unwarped
-    # outputImg = cv2.addWeighted(undistortedImg, 1, unwarped, 1, 0)
 
-    return outputImg
+    return warped
 
 if __name__ == '__main__':
     #1 Camera calibration

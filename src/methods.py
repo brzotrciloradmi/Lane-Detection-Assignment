@@ -55,7 +55,7 @@ def ImageUndistort(img, mtx, dist, rvecs, tvecs):
     # Load one of the test images
     h, w = img.shape[:2]
     # Obtain the new camera matrix and undistort the image
-    newCameraMtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
+    newCameraMtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 0, (w, h))
     undistortedImg = cv2.undistort(img, mtx, dist, None, newCameraMtx)
     return undistortedImg
 
@@ -79,13 +79,13 @@ def filterByColor(inputImg):
     inputImgHSV = cv2.cvtColor(inputImg, cv2.COLOR_BGR2HSV)
 
     #filter by white color
-    lower_white = np.array([0, 0, 225])
+    lower_white = np.array([0, 0, 200])
     upper_white = np.array([255, 255, 255])
     whiteMask = cv2.inRange(inputImgHSV, lower_white, upper_white)
 
     #filter by yellow color
-    lower_yellow = np.array([10, 50, 150])
-    upper_yellow = np.array([50, 255, 255])
+    lower_yellow = np.array([10, 50, 100])
+    upper_yellow = np.array([70, 255, 255])
     yellowMask = cv2.inRange(inputImg, lower_yellow, upper_yellow)
 
     mask = whiteMask + yellowMask
