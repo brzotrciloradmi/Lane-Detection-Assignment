@@ -55,7 +55,7 @@ def ImageUndistort(img, mtx, dist, rvecs, tvecs):
     # Load one of the test images
     h, w = img.shape[:2]
     # Obtain the new camera matrix and undistort the image
-    newCameraMtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
+    newCameraMtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 0, (w, h))
     undistortedImg = cv2.undistort(img, mtx, dist, None, newCameraMtx)
     return undistortedImg
 
@@ -75,17 +75,17 @@ def RegionOfInterest(inputImg, roiVertices):
     return maskedImage
 
 
-def filterByColor(inputImg):
+def FilterByColor(inputImg):
     inputImgHSV = cv2.cvtColor(inputImg, cv2.COLOR_BGR2HSV)
 
     #filter by white color
-    lower_white = np.array([0, 0, 225])
+    lower_white = np.array([0, 0, 200])
     upper_white = np.array([255, 255, 255])
     whiteMask = cv2.inRange(inputImgHSV, lower_white, upper_white)
 
     #filter by yellow color
     lower_yellow = np.array([10, 50, 100])
-    upper_yellow = np.array([50, 255, 255])
+    upper_yellow = np.array([60, 255, 255])
     yellowMask = cv2.inRange(inputImg, lower_yellow, upper_yellow)
 
     mask = whiteMask + yellowMask
@@ -102,3 +102,25 @@ def Warper(img, src, dst):
     M = cv2.getPerspectiveTransform(np.float32(src), np.float32(dst))
     warped = cv2.warpPerspective(img, M, imgSize, flags=cv2.INTER_NEAREST)  # keep same size as input image
     return warped
+
+
+def GetCurve(img, leftx, rightx):
+    ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
+    y_eval = np.max(ploty)
+    ym_per_pix = 30.5/720 # meters per pixel in y dimension
+    xm_per_pix = 3.7/720 # meters per pixel in x dimension
+
+    # Fit new polynomials to x,y in world space
+    left_fit_cr = np.polyfit(ploty*ym_per_pix, leftx*xm_per_pix, 2)
+    right_fit_cr = np.polyfit(ploty*ym_per_pix, rightx*xm_per_pix, 2)
+    # Calculate the new radii of curvature
+    left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
+    right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+
+    car_pos = img.shape[1]/2
+    l_fit_x_int = left_fit_cr[0]*img.shape[0]**2 + left_fit_cr[1]*img.shape[0] + left_fit_cr[2]
+    r_fit_x_int = right_fit_cr[0]*img.shape[0]**2 + right_fit_cr[1]*img.shape[0] + right_fit_cr[2]
+    lane_center_position = (r_fit_x_int + l_fit_x_int) /2
+    center = (car_pos - lane_center_position) * xm_per_pix / 10
+    # Now our radius of curvature is in meters
+    return (left_curverad, right_curverad, center)
