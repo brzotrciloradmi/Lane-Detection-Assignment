@@ -184,7 +184,6 @@ def detectLanes(inputImg):
     unwarped = methods.Warper(warped, dstVertices, roiVertices)
     undistortedImg = cv2.fillPoly(undistortedImg, [roiVertices], (0, 0, 0))
     outputImg = undistortedImg + unwarped
-    cv2.blur(outputImg, outputImg, [3, 3], cv2.BORDER_DEFAULT)
 
     curverad = methods.GetCurve(warped, left_fitx, right_fitx)
     meanCurve = np.mean([curverad[0], curverad[1]])
