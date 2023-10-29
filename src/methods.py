@@ -48,10 +48,10 @@ def CameraCalibration(chessRows, chessCols, chessFolderPath):
 
     calibrationError = calibrationError / len(objectPointsArray)
 
-    return mtx, dist, rvecs, tvecs, calibrationError
+    return mtx, dist, calibrationError
 
 
-def ImageUndistort(img, mtx, dist, rvecs, tvecs):
+def ImageUndistort(img, mtx, dist):
     # Load one of the test images
     h, w = img.shape[:2]
     # Obtain the new camera matrix and undistort the image
@@ -124,3 +124,19 @@ def GetCurve(img, leftx, rightx):
     center = (car_pos - lane_center_position) * xm_per_pix / 10
     # Now our radius of curvature is in meters
     return (left_curverad, right_curverad, center)
+
+def PeakHistogram(inputImg):
+    # Histogram Peak Detection
+    hist = np.sum(inputImg[inputImg.shape[0]//2:,:], axis=0)
+    midpoint = int(hist.shape[0]/2)
+    leftx_base = np.argmax(hist[:midpoint])
+    rightx_base = np.argmax(hist[midpoint:]) + midpoint
+
+    # Create a blank image to plot the histogram
+    histogram_image = np.zeros((inputImg.shape[0], inputImg.shape[1], 3), dtype=np.uint8)
+    # Normalize the histogram to fit in the image height
+    hist_normalized = np.uint8(hist / hist.max() * histogram_image.shape[0])
+    # Plot the histogram on the image
+    for i, hist_val in enumerate(hist_normalized):
+        cv2.line(histogram_image, (i, histogram_image.shape[0]), (i, histogram_image.shape[0] - hist_val), (255, 255, 255))
+    return hist, leftx_base, rightx_base, histogram_image

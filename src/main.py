@@ -1,15 +1,3 @@
-# 1. + camera calibration
-# -> ROI /
-# + -> Filtering by color  (Yellow and white line)
-# -> Gray scale
-# -> (High pass Filtering)
-# 2. -> Edge detection (algorithm)
-# 3. -> Perspective transform
-# -> (Filtering)
-# 4. -> Lane detection (curve/lane)
-# 5. -> curvature radius & vehicle offset data aqusition
-# 6 -> Perspective transform back and lane highlight
-
 import cv2
 import numpy as np
 import glob
@@ -19,14 +7,15 @@ import methods
 
 cameraCalibrationPath = '../camera_cal/calibration*.jpg'
 CalibrationTestOutputPath = '../calibrationTest/'
-testVideoPath = '../test_videos/project_video03.mp4'
-# testVideoPath = '../test_videos/challenge02.mp4'
+testVideoPath = '../test_videos/project_video01.mp4'
+# testVideoPath = '../test_videos/challenge01.mp4'
 
 chessRows = 6
 chessCols = 9
 
 #predefined ROIs
 def findROI(imgShape):
+    #special case for this one
     if testVideoPath == '../test_videos/project_video03.mp4':
         roiVertices = np.int32([ [2*imgShape[1]/5 + 10, 4*imgShape[0]/6 -1],
                 [1*imgShape[1]/5 + 70 - 1, 6*imgShape[0]/7 - 1],
@@ -40,12 +29,12 @@ def findROI(imgShape):
     return roiVertices
 
 
-def videoPlayer(VideoPath):
+def VideoPlayer(VideoPath):
     video = cv2.VideoCapture(VideoPath)
     while(video.isOpened()):
         ret, frame = video.read()
         if ret == True:
-            frame, meanCurve, centerOffset = detectLanes(frame)
+            frame, meanCurve, centerOffset = DetectLanes(frame)
             cv2.putText(frame, 'Lane Curvature: {:.0f} m'.format(meanCurve), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
             cv2.putText(frame, 'Vehicle offset: {:.4f} m'.format(centerOffset), (100, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
             cv2.imshow('Frame', frame)
@@ -62,9 +51,9 @@ def videoPlayer(VideoPath):
 
 leftx_base_prev = 0
 rightx_base_prev= 0
-def detectLanes(inputImg):
+def DetectLanes(inputImg):
 
-    undistortedImg = methods.ImageUndistort(inputImg, mtx, dist, rvecs, tvecs)
+    undistortedImg = methods.ImageUndistort(inputImg, mtx, dist)
 
     # ROI masking
     # print(undistortedImg.shape) #shape returns (width, height, channelNum)
@@ -76,24 +65,20 @@ def detectLanes(inputImg):
                     [undistortedImg.shape[1] - 1, undistortedImg.shape[0] - 1],
                     [undistortedImg.shape[1] - 1, 0] ])
 
+
     # for val in roiVertices:
     #     cv2.circle(undistortedImg,(val[0],val[1]),5,(0,255,0),-1)
-
-    # for val in dstVertices:
-    #     cv2.circle(undistortedImg,(val[0],val[1]),5,(255,0,0),-1)
-
 
     # Perspective warping
     warped = methods.Warper(undistortedImg, roiVertices, dstVertices)
 
+
     # Binary mask extract from color filtering
     colorFilteredImg, colorMask = methods.FilterByColor(warped)
 
+
     # Histogram Peak Detection
-    hist = np.sum(colorMask[colorMask.shape[0]//2:,:], axis=0)
-    midpoint = int(hist.shape[0]/2)
-    leftx_base = np.argmax(hist[:midpoint])
-    rightx_base = np.argmax(hist[midpoint:]) + midpoint
+    hist, leftx_base, rightx_base, histogram_image = methods.PeakHistogram(colorMask)
 
     # Filter single midpoint peak noise
     global leftx_base_prev
@@ -124,15 +109,20 @@ def detectLanes(inputImg):
         farRight_rightx_point += 1
 
     # Spread the zones to be sure we get the entire lane
-    farLeft_leftx_point -= 70
-    farRight_leftx_point += 70
-    farLeft_rightx_point -= 70
-    farRight_rightx_point += 70
+    farLeft_leftx_point -= 50
+    farRight_leftx_point += 50
+    farLeft_rightx_point -= 50
+    farRight_rightx_point += 50
 
-    cv2.circle(warped,(farLeft_leftx_point, 0),5,(0,0,255),-1)
-    cv2.circle(warped,(farRight_leftx_point, 0),5,(0,0,255),-1)
-    cv2.circle(warped,(farLeft_rightx_point, 0),5,(0,0,255),-1)
-    cv2.circle(warped,(farRight_rightx_point, 0),5,(0,0,255),-1)
+    #Visualize zones
+    # cv2.circle(warped,(farLeft_leftx_point, 0),5,(0,0,255),-1)
+    # cv2.line(warped, (farLeft_leftx_point, 0), (farLeft_leftx_point, warped.shape[0]-1), (0, 0, 255), 3)
+    # cv2.circle(warped,(farRight_leftx_point, 0),5,(0,0,255),-1)
+    # cv2.line(warped, (farRight_leftx_point, 0), (farRight_leftx_point, warped.shape[0]-1), (0, 0, 255), 3)
+    # cv2.circle(warped,(farLeft_rightx_point, 0),5,(0,0,255),-1)
+    # cv2.line(warped, (farLeft_rightx_point, 0), (farLeft_rightx_point, warped.shape[0]-1), (0, 0, 255), 3)
+    # cv2.circle(warped,(farRight_rightx_point, 0),5,(0,0,255),-1)
+    # cv2.line(warped, (farRight_rightx_point, 0), (farRight_rightx_point, warped.shape[0]-1), (0, 0, 255), 3)
 
     # Extract lines
     nonzero = colorMask.nonzero()
@@ -163,7 +153,7 @@ def detectLanes(inputImg):
 
     # In case no lane is found, return default undistorted img
     if(len(rightLaneX) == 0 or len(rightLaneY) == 0 or len(leftLaneX) == 0 or len(leftLaneY) == 0):
-        return colorMask
+        return undistortedImg, -1, -1
 
     # Calculate all lane pixes inside the image
     left_fitx   = leftLineCoeffs[0]*ploty**2 + leftLineCoeffs[1]*ploty + leftLineCoeffs[2]
@@ -177,8 +167,14 @@ def detectLanes(inputImg):
     pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
     pts_right = np.array([np.transpose(np.vstack([right_fitx, ploty]))])
 
-    cv2.polylines(warped, np.int32([pts_left]), False, (0, 255, 0), 10)
-    cv2.polylines(warped, np.int32([pts_right]), False, (0, 255, 0), 10)
+    left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+    right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+    points = np.hstack((left, right))
+
+    cv2.fillPoly(warped, np.int_(points), (50,150,55))
+
+    cv2.polylines(warped, np.int32([pts_left]), False, (0, 255, 0), 40)
+    cv2.polylines(warped, np.int32([pts_right]), False, (0, 255, 0), 40)
 
     # Unwarp the result and merge it with the undistorted input image
     unwarped = methods.Warper(warped, dstVertices, roiVertices)
@@ -192,21 +188,21 @@ def detectLanes(inputImg):
 
 if __name__ == '__main__':
     #1 Camera calibration
-    mtx, dist, rvecs, tvecs, calibrationError = methods.CameraCalibration(chessRows, chessCols, cameraCalibrationPath)
+    mtx, dist, calibrationError = methods.CameraCalibration(chessRows, chessCols, cameraCalibrationPath)
     print("Total Calibration Error: ", calibrationError)
 
     #1.1 Undistorted img test
     for path in glob.glob(cameraCalibrationPath):
         img = cv2.imread(path)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        undistorted = methods.ImageUndistort(gray, mtx, dist, rvecs, tvecs)
+        undistorted = methods.ImageUndistort(gray, mtx, dist)
         concatedImgs = np.hstack((gray, undistorted))
 
         calOutputFilePath = CalibrationTestOutputPath + path.split('/')[len(path.split('/')) - 1]
         cv2.imwrite(calOutputFilePath, concatedImgs)
 
     #start reading the test video and parse data
-    videoPlayer(testVideoPath)
+    VideoPlayer(testVideoPath)
 
 
 
